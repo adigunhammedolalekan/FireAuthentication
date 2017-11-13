@@ -49,6 +49,9 @@ public class CreateAccountActivity extends BaseActivity {
     @BindView(R.id.edt_code_create_account)
     EditText codeEditText;
 
+    /*
+    * Fields/EditText containers.
+    * */
     @BindView(R.id.layout_phone_create_account)
     LinearLayout phoneContainerLayout;
     @BindView(R.id.otp_layout_create_account)
@@ -78,18 +81,25 @@ public class CreateAccountActivity extends BaseActivity {
                 codeEditText.setText(phoneAuthCredential.getSmsCode());
                 signIn(phoneAuthCredential);
 
-                L.fine(phoneAuthCredential.toString());
             }
 
             @Override
             public void onVerificationFailed(FirebaseException e) {
                 L.WTF(e);
+                /*
+                * Verification Failed, Might be network error, or Firebase quota has been exhausted
+                * */
+                progressDialog.cancel();
+                toast("Failed to send code. Please retry");
             }
 
             @Override
             public void onCodeSent(String s, PhoneAuthProvider.ForceResendingToken forceResendingToken) {
                 super.onCodeSent(s, forceResendingToken);
 
+                /*
+                * Code has been sent to user device.
+                * */
                 mVerificationID = s;
                 resendingToken = forceResendingToken;
 
@@ -99,6 +109,9 @@ public class CreateAccountActivity extends BaseActivity {
     }
     @OnClick(R.id.btn_finish_create_account) public void onCreateAccountClick() {
 
+        /*
+        * Phone number has been verified, Store new user details.
+        * */
         User user = new User(Util.textOf(firstNameEditText), Util.textOf(lastNameEditText), Util.textOf(phoneEditText));
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         databaseReference.child("users")
@@ -108,6 +121,10 @@ public class CreateAccountActivity extends BaseActivity {
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
     }
+
+    /*
+    * Verify entered phone number and allow firebase to send verification code.
+    * */
     @OnClick(R.id.btn_next_create_account) public void onNextClick() {
 
         String phone = Util.textOf(phoneEditText);
@@ -119,6 +136,10 @@ public class CreateAccountActivity extends BaseActivity {
         progressDialog.show();
         PhoneAuthProvider.getInstance().verifyPhoneNumber(phone, 60, TimeUnit.SECONDS, this, mChangedCallbacks);
     }
+
+    /*
+    * Verify OTP
+    * */
     @OnClick(R.id.btn_verify_code_create_account) public void onVerifyCodeClick() {
 
         String code = Util.textOf(codeEditText);
@@ -129,6 +150,9 @@ public class CreateAccountActivity extends BaseActivity {
         PhoneAuthCredential phoneAuthCredential = PhoneAuthProvider.getCredential(mVerificationID, code);
         signIn(phoneAuthCredential);
     }
+    /*
+    * Update UI using the newly created FirebaseUser.
+    * */
     void updateUI(FirebaseUser firebaseUser) {
         if(firebaseUser != null) {
             hideViews(phoneContainerLayout, otpContainerLayout);
@@ -181,7 +205,10 @@ public class CreateAccountActivity extends BaseActivity {
                                     task.getResult().getUser();
                             updateUI(newUser);
                         }else {
-                            toast("Failed to create user. Please retry");
+                            /*
+                            * Code entered by user might be incorrect
+                            * */
+                            toast("Failed to create user. Invalid OTP. Please retry");
                             L.WTF(task.getException());
                         }
                     }
@@ -193,10 +220,8 @@ public class CreateAccountActivity extends BaseActivity {
                 this, mChangedCallbacks, resendingToken);
     }
     void codeSent() {
-
         progressDialog.cancel();
         hideViews(phoneContainerLayout, completeProfileLayout);
         showViews(otpContainerLayout);
-
     }
 }
